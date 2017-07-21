@@ -185,6 +185,7 @@ CMakeCache.txt
 CMakeFiles*
 ALL_BUILD*
 ZERO_CHECK*
+*.cmake
 
 #################
 ## Docs
@@ -203,3 +204,8 @@ docs/_build
 *.pb.h
 CMakeFiles*
 build*
+*example_*
+main
+*Makefile
+*benchmarks_all
+*LeNet_model
