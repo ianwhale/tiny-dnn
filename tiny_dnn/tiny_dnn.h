@@ -48,6 +48,8 @@
 #include "tiny_dnn/activations/tanh_layer.h"
 #include "tiny_dnn/activations/tanh_p1m2_layer.h"
 
+#include "tiny_dnn/evo/evo.h"
+
 #ifdef CNN_USE_GEMMLOWP
 #include "tiny_dnn/layers/quantized_fully_connected_layer.h"
 #endif  // CNN_USE_GEMMLOWP

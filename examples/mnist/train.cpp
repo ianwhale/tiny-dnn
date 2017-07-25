@@ -59,7 +59,8 @@ static void train_lenet(const std::string &data_dir_path,
                         double learning_rate,
                         const int n_train_epochs,
                         const int n_minibatch,
-                        core::backend_t backend_type) {
+                        core::backend_t backend_type,
+                        int seed) {
   // specify loss-function and learning strategy
   network<sequential> nn;
   adagrad optimizer;
@@ -132,7 +133,9 @@ static void usage(const char *argv0) {
             << " --learning_rate 1"
             << " --epochs 30"
             << " --minibatch_size 16"
-            << " --backend_type internal" << std::endl;
+            << " --backend_type internal"
+            << " --seed 0" <<
+            std::endl;
 }
 
 int main(int argc, char **argv) {
@@ -140,6 +143,7 @@ int main(int argc, char **argv) {
   int epochs                   = 30;
   std::string data_path        = "";
   int minibatch_size           = 16;
+  int seed                     = 0;
   core::backend_t backend_type = core::default_engine();
 
   if (argc == 2) {
@@ -161,7 +165,10 @@ int main(int argc, char **argv) {
       backend_type = parse_backend_name(argv[count + 1]);
     } else if (argname == "--data_path") {
       data_path = std::string(argv[count + 1]);
-    } else {
+    } else if (argname == "--seed") {
+      seed = atoi(argv[count + 1]);
+    }
+    else {
       std::cerr << "Invalid parameter specified - \"" << argname << "\""
                 << std::endl;
       usage(argv[0]);
@@ -198,9 +205,12 @@ int main(int argc, char **argv) {
             << "Minibatch size: " << minibatch_size << std::endl
             << "Number of epochs: " << epochs << std::endl
             << "Backend type: " << backend_type << std::endl
+            << "Seed: " << seed << std::endl
             << std::endl;
+
   try {
-    train_lenet(data_path, learning_rate, epochs, minibatch_size, backend_type);
+    train_lenet(data_path, learning_rate, epochs,
+      minibatch_size, backend_type, seed);
   } catch (tiny_dnn::nn_error &err) {
     std::cerr << "Exception: " << err.what() << std::endl;
   }
