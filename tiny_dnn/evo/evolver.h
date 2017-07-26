@@ -4,15 +4,16 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <typeinfo>
 #include "tiny_dnn/evo/params.h"
 #include "tiny_dnn/evo/individual.h"
 #include "tiny_dnn/util/util.h"
 
 namespace tiny_dnn {
-    template <typename NetType>
     /**
      * Evolver class. Aims to minimize the weights of the network using LEEA.
      */
+    template <typename NetType>
     class Evolver {
     public:
         Evolver(std::shared_ptr<network<NetType>> nn,
@@ -21,32 +22,45 @@ namespace tiny_dnn {
 
             // Initialize population.
             // TODO: Parallelize.
-            printNetwork();
+            // std::vector<float> initial_genome;
+            // copyInitialGenome(initial_genome);
         }
 
-
-        void printNetwork() {
-            int bungus = 0;
+        /**
+         * Copy the initial genome into a vector based on the network provided.
+         * @param initial_genome
+         */
+        void copyInitialGenome(std::vector<float> &initial_genome) {
+            initial_genome.empty(); // Just to make sure...
             for (auto layer : *mNetwork) {
                 for (auto weights : layer->weights()) {
                     for (auto weight : *weights) {
-                        std::cout << weight << std::endl;
+                        initial_genome.push_back(weight);
                     }
                 }
             }
         }
 
         /**
+         * Loads a network's weights with an individual's genome.
+         */
+        void loadWeights(const std::shared_ptr<Individual>& individual) {
+            int idx = 0;
+            for (auto layer : *mNetwork) {
+                layer->load(*(individual->getGenome()), idx);
+            }
+        }
+
+        /**
          * Main evolution loop.
          * Evaluate to find best individuals and reproduce best.
-         *
          */
         template <typename Error> // Error function to use.
         void evolve() {
             while (mCurrentGeneration < Params::max_generations) {
-                evaluate<Error>();
+                evaluatePopulation<Error>();
                 sortPopulation();
-                reproduce();
+                reproducePopulation();
                 mCurrentGeneration++;
             }
         }
@@ -56,7 +70,7 @@ namespace tiny_dnn {
          * getting the value of the loss function for a minibatch.
          */
         template <typename Error>
-        void evaluate() {
+        void evaluatePopulation() {
             // TODO: Parallelize.
         }
 
@@ -75,7 +89,7 @@ namespace tiny_dnn {
         /**
          * Reproduce the best individuals based on Params::selection_proportion.
          */
-        void reproduce() {
+        void reproducePopulation() {
             // TODO: Parallelize.
         }
 
