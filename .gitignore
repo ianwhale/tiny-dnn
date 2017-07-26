@@ -209,3 +209,7 @@ main
 *Makefile
 *benchmarks_all
 *LeNet-model
+googletest*
+test/print_device
+test/tiny_dnn_test
+DartConfiguration.tcl
