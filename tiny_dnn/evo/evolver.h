@@ -24,6 +24,11 @@ namespace tiny_dnn {
             // TODO: Parallelize.
             // std::vector<float> initial_genome;
             // copyInitialGenome(initial_genome);
+
+            // Only need the length of the new genome.
+            // Copy initial is only there for historical reasons now I guess...
+
+            // Emplace back shared pointers for initial genome.
         }
 
         /**

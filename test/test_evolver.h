@@ -36,11 +36,12 @@ TEST(evolver, load_unload_weights) {
     }
 
     // Change all values of the weight_vector to observe a change.
-    for (int i = 0; i < weight_vector.size(); i++) {
+    for (size_t i = 0; i < weight_vector.size(); i++) {
         weight_vector[i]++;
     }
 
-    Individual indv(std::make_shared<std::vector<float_t>>(weight_vector));
+    Individual indv(42); // Just any ol' number, we won't use it.
+    indv.setGenome(weight_vector);
     evo.loadWeights(std::make_shared<Individual>(indv));
 
     idx = 0;
