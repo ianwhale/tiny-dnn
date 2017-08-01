@@ -10,6 +10,9 @@
 #include "tiny_dnn/util/util.h"
 
 namespace tiny_dnn {
+
+typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
+
     /**
      * Evolver class. Aims to minimize the weights of the network using LEEA.
      */
@@ -18,9 +21,14 @@ namespace tiny_dnn {
     public:
         Evolver(std::shared_ptr<network<NetType>> nn,
                 std::shared_ptr<std::vector<label_t>> train_labels,
-                std::shared_ptr<std::vector<vec_t>> train_data) : mNetwork(nn) {
+                std::shared_ptr<std::vector<vec_t>> train_data)
+                : mNetwork(nn) {
 
-            // Initialize population.
+            for (size_t i = 0; i < Params::population_size; i++) {
+                mPopulation.push_back(nullptr);
+            }
+
+            initializePopulation(getWeightCount());
             // TODO: Parallelize.
             // std::vector<float> initial_genome;
             // copyInitialGenome(initial_genome);
@@ -32,7 +40,33 @@ namespace tiny_dnn {
         }
 
         /**
-         * Copy the initial genome into a vector based on the network provided.
+         * Initialize the population in parallel.
+         * @param genome_length
+         */
+        void initializePopulation(size_t genome_length) {
+            for_i(true, Params::population_size, [&](size_t i) {
+                mPopulation[i] = std::make_shared<Individual>(genome_length);
+            });
+        }
+
+        /**
+         * Get how many weights are in the network.
+         * @return count
+         */
+        size_t getWeightCount() {
+            size_t count = 0;
+            for (auto layer : *mNetwork) {
+                for (auto weights : layer->weights()) {
+                    for (auto weight : *weights) {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        }
+
+        /**
+         * Used for testing...
          * @param initial_genome
          */
         void copyInitialGenome(std::vector<float> &initial_genome) {
@@ -49,7 +83,7 @@ namespace tiny_dnn {
         /**
          * Loads a network's weights with an individual's genome.
          */
-        void loadWeights(const std::shared_ptr<Individual>& individual) {
+        void loadWeights(std::shared_ptr<Individual> individual) {
             int idx = 0;
             for (auto layer : *mNetwork) {
                 layer->load(*(individual->getGenome()), idx);
@@ -96,6 +130,11 @@ namespace tiny_dnn {
          */
         void reproducePopulation() {
             // TODO: Parallelize.
+        }
+
+        pop_ptr getPopulation() {
+            return std::make_shared<std::vector<std::shared_ptr<Individual>>>
+                    (mPopulation);
         }
 
     protected:

@@ -6,6 +6,34 @@
 
 namespace tiny_dnn {
 
+TEST(evolver, initialize_population) {
+    network<sequential> nn;
+    core::backend_t backend_type = core::default_engine();
+    nn << fully_connected_layer(28 * 28, 80, true, backend_type)
+    << sigmoid_layer()
+    << fully_connected_layer(80, 10, true, backend_type);
+
+    std::vector<label_t> train_labels; // Remain empty.
+    std::vector<vec_t> train_data;     // Remain empty.
+
+    Evolver<sequential> evo(std::make_shared<network<sequential> >(nn),
+                            std::make_shared<std::vector<label_t> >(train_labels),
+                            std::make_shared<std::vector<vec_t> >(train_data));
+
+    size_t size = evo.getWeightCount();
+    pop_ptr population = evo.getPopulation();
+
+    for (auto individual : *population) {
+        auto genome = *(individual->getGenome());
+        EXPECT_EQ(size, genome.size());
+
+        for (auto weight : genome) {
+            EXPECT_TRUE(weight <= Params::initial_weights_delta
+                        && weight >= (-1 * Params::initial_weights_delta));
+        }
+    }
+}
+
 TEST(evolver, load_unload_weights) {
     network<sequential> nn;
     core::backend_t backend_type = core::default_engine();

@@ -26,9 +26,11 @@ public:
     Roulette(const std::vector<std::shared_ptr<Individual>> & individuals) {
         mTotal = 0.0;
         mSize = individuals.size();
+
         float_t min = std::numeric_limits<float>::max();
         float_t max = std::numeric_limits<float>::min();
         float_t fitness;
+
         for (auto individual : individuals) {
             fitness = -1 * individual->getFitness();
             mTotal += fitness;
