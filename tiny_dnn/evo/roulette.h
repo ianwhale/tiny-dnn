@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <algorithm>
-#include <iostream>
 #include <cmath>
 #include <limits>
 #include <assert.h>
@@ -44,15 +43,11 @@ public:
             // the same layout as one would expect in normal roulette selection.
             mAdjustedFits.push_back(individual->getFitness() + min + max);
         }
-
-        for (float_t adj_fit : mAdjustedFits) {
-            std::cout << "Adjusted Fitness: " << adj_fit << std::endl;
-        }
     }
 
     /**
      * Perform a roulette wheel spin.
-     * @return size_t i, the index chosen from the fitnesses.
+     * @return size_t i, the index chosen from the fitness distribution.
      */
     size_t spin() {
         float_t r_val = uniform_rand(0.0, 1.0) * mTotal;

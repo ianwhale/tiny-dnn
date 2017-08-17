@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <iostream>
+#include <algorithm>
 #include "testhelper.h"
 #include "tiny_dnn/tiny_dnn.h"
 
@@ -16,9 +18,9 @@ TEST(evolver, initialize_population) {
     std::vector<label_t> train_labels; // Remain empty.
     std::vector<vec_t> train_data;     // Remain empty.
 
-    Evolver<sequential> evo(std::make_shared<network<sequential> >(nn),
-                            std::make_shared<std::vector<label_t> >(train_labels),
-                            std::make_shared<std::vector<vec_t> >(train_data));
+    Evolver<sequential> evo(std::make_shared<network<sequential>>(nn),
+                            std::make_shared<std::vector<label_t>>(train_labels),
+                            std::make_shared<std::vector<vec_t>>(train_data));
 
     size_t size = evo.getWeightCount();
     pop_ptr population = evo.getPopulation();
@@ -44,43 +46,54 @@ TEST(evolver, load_unload_weights) {
     std::vector<label_t> train_labels; // Remain empty.
     std::vector<vec_t> train_data;     // Remain empty.
 
-    Evolver<sequential> evo(std::make_shared<network<sequential> >(nn),
-                            std::make_shared<std::vector<label_t> >(train_labels),
-                            std::make_shared<std::vector<vec_t> >(train_data));
+    Evolver<sequential> evo(std::make_shared<network<sequential>>(nn),
+                            std::make_shared<std::vector<label_t>>(train_labels),
+                            std::make_shared<std::vector<vec_t>>(train_data));
 
-    nn.init_weight();
+    size_t weight_count = evo.getWeightCount();
 
-    std::vector<float_t> weight_vector;
-    evo.copyInitialGenome(weight_vector);
+    std::shared_ptr<Individual> indv_ptr(new Individual(weight_count));
 
-    int idx = 0;
-    for (auto layer : nn) {
-        for (auto weights : layer->weights()) {
-            for (auto weight : *weights) {
-                EXPECT_NEAR(weight_vector[idx], weight, 1e-5);
-                idx++;
-            }
-        }
+    evo.loadWeights(indv_ptr);
+    auto network_weights = *(evo.getCurrentNetworkWeights());
+    auto genome = *(indv_ptr->getGenome());
+
+    for (size_t i = 0; i < weight_count; i++) {
+        EXPECT_EQ(genome[i], network_weights[i]);
     }
 
-    // Change all values of the weight_vector to observe a change.
-    for (size_t i = 0; i < weight_vector.size(); i++) {
-        weight_vector[i]++;
+    genome = *(indv_ptr->getGenome());
+
+    for (auto & weight : genome) {
+        weight++;
     }
 
-    Individual indv(42); // Just any ol' number, we won't use it.
-    indv.setGenome(weight_vector);
-    evo.loadWeights(std::make_shared<Individual>(indv));
+    indv_ptr->setGenome(genome);
 
-    idx = 0;
-    for (auto layer : nn) {
-        for (auto weights : layer->weights()) {
-            for (auto weight : *weights) {
-                EXPECT_NEAR(weight_vector[idx], weight, 1e-5);
-                idx++;
-            }
-        }
+    evo.loadWeights(indv_ptr);
+    network_weights = *(evo.getCurrentNetworkWeights());
+
+    for (size_t i = 0; i < weight_count; i++) {
+        EXPECT_EQ(genome[i], network_weights[i]);
     }
+}
+
+TEST(evolver, reproduce_population) {
+    network<sequential> nn;
+    core::backend_t backend_type = core::default_engine();
+    nn << fully_connected_layer(28 * 28, 80, true, backend_type)
+    << sigmoid_layer()
+    << fully_connected_layer(80, 10, true, backend_type);
+
+    std::vector<label_t> train_labels; // Remain empty.
+    std::vector<vec_t> train_data;     // Remain empty.
+
+    Evolver<sequential> evo(std::make_shared<network<sequential>>(nn),
+                            std::make_shared<std::vector<label_t>>(train_labels),
+                            std::make_shared<std::vector<vec_t>>(train_data));
+
+    EXPECT_NO_THROW(evo.reproducePopulation());
+
 }
 
 }
