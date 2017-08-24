@@ -101,6 +101,50 @@ inline void parse_mnist_labels(const std::string &label_file,
 }
 
 /**
+ * parse MNIST database format labels with rescaling/resizing
+ *
+ * Returns labels as one-hot encodings.
+ *
+ * http://yann.lecun.com/exdb/mnist/
+ *
+ * @param label_file [in]  filename of database (i.e.train-labels-idx1-ubyte)
+ * @param labels     [out] parsed label data
+ * @param classes    the number of classes.
+ **/
+inline void parse_mnist_labels(const std::string &label_file,
+                               std::vector<vec_t> *labels,
+                               size_t classes) {
+  std::ifstream ifs(label_file.c_str(), std::ios::in | std::ios::binary);
+
+  if (ifs.bad() || ifs.fail())
+    throw nn_error("failed to open file:" + label_file);
+
+  uint32_t magic_number, num_items;
+
+  ifs.read(reinterpret_cast<char *>(&magic_number), 4);
+  ifs.read(reinterpret_cast<char *>(&num_items), 4);
+
+  if (is_little_endian()) {  // MNIST data is big-endian format
+    reverse_endian(&magic_number);
+    reverse_endian(&num_items);
+  }
+
+  if (magic_number != 0x00000801 || num_items <= 0)
+    throw nn_error("MNIST label-file format error");
+
+  labels->resize(num_items);
+  for (uint32_t i = 0; i < num_items; i++) {
+    uint8_t label;
+    ifs.read(reinterpret_cast<char *>(&label), 1);
+
+    vec_t one_hot(classes, float_t(0));
+    one_hot[static_cast<label_t>(label)] = float_t(1);
+
+    (*labels)[i] = one_hot;
+  }
+}
+
+/**
  * parse MNIST database format images with rescaling/resizing
  * http://yann.lecun.com/exdb/mnist/
  * - if original image size is WxH, output size is
