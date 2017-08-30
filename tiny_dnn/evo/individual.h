@@ -20,11 +20,13 @@ typedef std::shared_ptr<std::vector<float_t>> vec_ptr;
         Individual(size_t size) : mSize(size) {
             for (size_t i = 0; i < size; i++) {
                 // Randomly initialize genome.
-                mGenome.push_back(
-                    uniform_rand(-1 * Params::initial_weights_delta,
-                                 Params::initial_weights_delta)
+                auto gen = random_generator::get_instance()();
+                std::uniform_real_distribution<float> dst(
+                    -1 * Params::initial_weights_delta,
+                    Params::initial_weights_delta
                 );
 
+                mGenome.push_back(dst(gen));
                 mFitness = std::numeric_limits<float>::min();
             }
         }
@@ -38,11 +40,11 @@ typedef std::shared_ptr<std::vector<float_t>> vec_ptr;
 
             auto genome_ptr = other.getGenome();
 
-            mGenome.empty(); // Sanity check.
+            mGenome.resize(mSize);
 
-            for (float_t weight : *genome_ptr) {
-                mGenome.push_back(weight);
-            }
+            for_i(true, mSize, [&](size_t i) {
+                mGenome[i] = (*genome_ptr)[i];
+            });
         }
 
         /**
@@ -55,10 +57,18 @@ typedef std::shared_ptr<std::vector<float_t>> vec_ptr;
 
             auto child_genome = child->getGenome();
 
+            auto coin_flip = random_generator::get_instance()();
+            std::uniform_real_distribution<float> coin_dst(0, 1);
+
+            auto gen = random_generator::get_instance()();
+            std::uniform_real_distribution<float> dst(
+                -1 * mutation_power,
+                mutation_power
+            );
+
             for_i(true, child_genome->size(), [&](size_t i) {
-                if (uniform_rand(0, 1) < mutation_rate) {
-                    (*child_genome)[i] += uniform_rand(-1 * mutation_power,
-                                                       mutation_power);
+                if (coin_dst(coin_flip) < mutation_rate) {
+                    (*child_genome)[i] += dst(gen);
                 }
             });
 
@@ -78,8 +88,11 @@ typedef std::shared_ptr<std::vector<float_t>> vec_ptr;
             auto child_genome = child->getGenome();
             auto parent_genome = parent->getGenome();
 
+            auto coin_flip = random_generator::get_instance()();
+            std::uniform_real_distribution<float> coin_dst(0, 1);
+
             for_i(true, child_genome->size(), [&](size_t i) {
-                if (uniform_rand(0, 1) < 0.5) {
+                if (coin_dst(coin_flip) < 0.5) {
                     (*child_genome)[i] = (*parent_genome)[i];
                 }
             });

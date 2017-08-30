@@ -9,7 +9,7 @@ namespace tiny_dnn {
       Params() = delete;
 
       static const size_t population_size = 1000;
-      static const size_t max_generations = 2;
+      static const size_t max_generations = 20;
       static const size_t sample_count = 2; //< 2 examples each generation.
       static constexpr float mutation_power = 0.03; //< Maximum range of mutation.
       /// Power decayed gradually, 0 disables,

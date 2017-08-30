@@ -130,12 +130,10 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
          */
         void evolve() {
             while (mCurrentGeneration < Params::max_generations) {
-                std::cout << "Sorting population..." << std::endl;
                 sortPopulation();
                 printInfo();
                 reproducePopulation();
 
-                std::cout << "Evaluating population..." << std::endl;
                 evaluatePopulation();
                 mCurrentGeneration++;
 
@@ -150,18 +148,16 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
         void printInfo() {
             std::cout << "Best of generation "
                     << mCurrentGeneration
-                    << ": " << -1 * mPopulation[0]->getFitness()
+                    << ": " << mPopulation[0]->getFitness()
                     << std::endl;
 
             std::cout << "Average of generation "
                     << mCurrentGeneration
-                    << ": " << -1 * getAverageFitness()
+                    << ": " << getAverageFitness()
                     << std::endl;
 
             std::cout << "- - - - - - - - - - - - - - - - - - - - - - - - -"
                       << std::endl;
-
-            std::cout << "Reproducing population..." << std::endl;
         }
 
         /**
@@ -171,35 +167,20 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
         void evaluatePopulation() {
             // TODO: Parallelize! (Worth noting that I'm guessing that
             // the network evaluation routine is not threadsafe...)
-
-            std::cout << "Getting minibatchs..." << std::endl;
-
             std::vector<vec_t> mini_data;
             std::vector<vec_t> mini_labels;
 
             mHandler.nextBatch(&mini_labels, &mini_data);
 
-            std::cout << "Evaluating population..." << std::endl;
-
             // Idea to parallelize:
-            // Maintain a list of networks (say 4 or 8) and evaluate the first
+            // Maintain a list of networks (4) and evaluate the first
             // 25% or 12.5% of the population on the first network, etc etc.
             float_t fitness;
             for (auto individual : mPopulation) {
-
-                std::cout << "Loading weights..." << std::endl;
-
                 loadWeights(individual);
-
-                std::cout << "Calculate fitness..." << std::endl;
-
                 fitness = mNetwork->template get_loss<Error>(mini_data, mini_labels);
-                fitness *= -1.0;
-                fitness *= (1.0 + Params::fitness_decay_rate);
-
-                std::cout << "Set fitness..." << std::endl;
-
-                individual->setFitness(individual->getFitness() + fitness);
+                individual->setFitness(individual->getFitness() * (1.0 - Params::fitness_decay_rate)
+                            + fitness);
             }
         }
 
@@ -211,8 +192,7 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
                     [](const std::shared_ptr<Individual> a,
                        const std::shared_ptr<Individual> b) -> bool
                    {
-                       // Sort in descending order.
-                       return a->getFitness() > b->getFitness();
+                       return a->getFitness() < b->getFitness();
                    });
         }
 
@@ -252,7 +232,6 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
 
         /**
          * Average fitness of the population.
-         * Will be negative but you know what to do about that :)
          * @return float_t
          */
         float_t getAverageFitness() {
@@ -319,12 +298,10 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
          * @param genome_length
          */
         void initializePopulation(size_t genome_length) {
-            std::cout << "Initializing population..." << std::endl;
             for_i(true, Params::population_size, [&](size_t i) {
                 mPopulation[i] = std::make_shared<Individual>(genome_length);
             });
 
-            std::cout << "Evaluating (initial) population..." << std::endl;
             evaluatePopulation();
         }
     };

@@ -43,6 +43,7 @@ using namespace tiny_dnn::activation;
 #include "test_evolver.h"
 #include "test_roulette.h"
 #include "test_individual.h"
+#include "test_evo_random.h"
 
 #ifndef CNN_NO_SERIALIZATION
 #include "test_serialization.h"

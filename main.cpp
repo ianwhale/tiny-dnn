@@ -7,7 +7,7 @@
 using namespace tiny_dnn;
 using namespace tiny_dnn::activation;
 
-static void construct_net(network<sequential> &nn,
+static void construct_simple_net(network<sequential> &nn,
                           core::backend_t backend_type) {
     // Baby network for now...
     nn << fully_connected_layer(28 * 28, 80, true, backend_type)
@@ -16,11 +16,13 @@ static void construct_net(network<sequential> &nn,
 }
 
 static void leea_experiment(const std::string &data_path, const int seed) {
+    RandomDispatcher::setSeed(seed);
+
     network<sequential> nn;
     core::backend_t backend_type = core::default_engine();
     size_t num_classes = 10;
 
-    construct_net(nn, backend_type);
+    construct_simple_net(nn, backend_type);
 
     std::cout << "Loading mnist data..." << std::endl;
 
@@ -35,7 +37,7 @@ static void leea_experiment(const std::string &data_path, const int seed) {
     parse_mnist_images(data_path + "/t10k-images.idx3-ubyte", &test_images, -1.0, 1.0, 0, 0); // Skip the padding.
 
     std::cout << "Start training..." << std::endl;
-    
+
     Evolver<sequential, mse> evo(std::make_shared<network<sequential> >(nn),
                             std::make_shared<std::vector<vec_t> >(one_hot_labels),
                             std::make_shared<std::vector<vec_t> >(train_images));

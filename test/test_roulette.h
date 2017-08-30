@@ -8,13 +8,14 @@
 namespace tiny_dnn {
 
 TEST(roulette, spin) {
-    std::vector<float_t> mock_fitnesses = {-30.143, -60.556, -90.334};
+    std::vector<float_t> mock_fitnesses = {30.143, 60.556, 90.334};
 
     std::vector<std::shared_ptr<Individual>> mock_individuals;
     for (float_t fitness : mock_fitnesses) {
-        Individual indv(42);
-        indv.setFitness(fitness);
-        mock_individuals.push_back(std::make_shared<Individual>(indv));
+        auto indv = std::make_shared<Individual>(42);
+        indv->setFitness(fitness);
+
+        mock_individuals.push_back(indv);
     }
 
     std::map<float_t, size_t> counts;

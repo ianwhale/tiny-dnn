@@ -19,30 +19,33 @@ class Roulette {
 
 public:
     /**
-     * This wheel assumes that all values will be negative.
+     * This wheel assumes that all values will be positive and a minimization
+     * scheme. .
      * @param individuals
      */
     Roulette(const std::vector<std::shared_ptr<Individual>> & individuals) {
-        mTotal = 0.0;
         mSize = individuals.size();
 
-        float_t min = std::numeric_limits<float>::max();
-        float_t max = std::numeric_limits<float>::min();
+        float_t min = std::numeric_limits<float_t>::max();
+        float_t max = std::numeric_limits<float_t>::min();
         float_t fitness;
 
         for (auto individual : individuals) {
-            fitness = -1 * individual->getFitness();
-            mTotal += fitness;
+            fitness = individual->getFitness();
             max = (fitness > max) ? fitness : max;
             min = (fitness < min) ? fitness : min;
-            assert(individual->getFitness() <= 0.0); // No positive fitnesses.
         }
 
+        float_t adjustment =  max + min;
+
         for (auto individual : individuals) {
-            // The adjusted fitness scheme simply turns the negative values into
-            // the same layout as one would expect in normal roulette selection.
-            mAdjustedFits.push_back(individual->getFitness() + min + max);
+            // Adjust the fitnesses so the smallest value is the biggest value.
+            fitness = adjustment - individual->getFitness();
+            mTotal += fitness;
+            mAdjustedFits.push_back(fitness);
         }
+
+        mDistribution = std::uniform_real_distribution<float>(0, mTotal);
     }
 
     /**
@@ -50,13 +53,12 @@ public:
      * @return size_t i, the index chosen from the fitness distribution.
      */
     size_t spin() {
-        float_t r_val = uniform_rand(0.0, 1.0) * mTotal;
+        float_t r_val = mDistribution(random_generator::get_instance()());
 
-        float_t sum = 0.0;
         for (size_t i = 0; i < mSize; i++) {
-            sum += mAdjustedFits[i];
+            r_val -= mAdjustedFits[i];
 
-            if (sum > r_val) {
+            if (r_val <= 0) {
                 return i;
             }
         }
@@ -66,8 +68,9 @@ public:
     }
 
 private:
-    float_t mTotal;
-    size_t mSize;
+    std::uniform_real_distribution<float> mDistribution;
+    float_t mTotal = 0.0;
+    size_t mSize = 0;
     std::vector<float_t> mAdjustedFits = {}; //< Adjusted fitnesses.
 };
 

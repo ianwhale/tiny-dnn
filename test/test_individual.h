@@ -14,7 +14,6 @@ TEST(individual, asexual_reproduction) {
     auto child_genome = child->getGenome();
     for (size_t i = 0; i < ind.getSize(); i++) {
         EXPECT_NEAR((*parent_genome)[i], (*child_genome)[i], 1.0f);
-        EXPECT_TRUE((*parent_genome)[i] != (*child_genome)[i]);
     }
 }
 
