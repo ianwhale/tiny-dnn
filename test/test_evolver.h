@@ -9,16 +9,18 @@
 namespace tiny_dnn {
 
 // Puts 10 random data points into the data pointer.
-void put_random_data(std::vector<vec_t> *data, size_t columns) {
+void put_random_data(std::vector<vec_t> *data, size_t columns, Random * random) {
     data->resize(10);
     for (size_t i = 0; i < 10; i++) {
         for (size_t j = 0; j < columns; j++) {
-            (*data)[i].push_back(uniform_rand(float_t(0), float_t(1)));
+            (*data)[i].push_back(random->getDouble(float_t(0), float_t(1)));
         }
     }
 }
 
-TEST(evolver, initialize_population) {
+TEST(EvoEvolverTest, initialize_population) {
+    Random * random = new Random(42);
+
     network<sequential> nn;
     core::backend_t backend_type = core::default_engine();
     nn << fully_connected_layer(5, 2, true, backend_type)
@@ -28,12 +30,13 @@ TEST(evolver, initialize_population) {
     std::vector<vec_t> train_labels;
     std::vector<vec_t> train_data;
 
-    put_random_data(&train_labels, 1);
-    put_random_data(&train_data, 5);
+    put_random_data(&train_labels, 1, random);
+    put_random_data(&train_data, 5, random);
 
     Evolver<sequential, mse> evo(std::make_shared<network<sequential>>(nn),
                             std::make_shared<std::vector<vec_t>>(train_labels),
-                            std::make_shared<std::vector<vec_t>>(train_data));
+                            std::make_shared<std::vector<vec_t>>(train_data),
+                            random);
 
     size_t size = evo.getWeightCount();
     pop_ptr population = evo.getPopulation();
@@ -47,9 +50,13 @@ TEST(evolver, initialize_population) {
                         && weight >= (-1 * Params::initial_weights_delta));
         }
     }
+
+    delete random;
 }
 
-TEST(evolver, load_unload_weights) {
+TEST(EvoEvolverTest, load_unload_weights) {
+    Random * random = new Random(42);
+
     network<sequential> nn;
     core::backend_t backend_type = core::default_engine();
     nn << fully_connected_layer(5, 2, true, backend_type)
@@ -59,16 +66,17 @@ TEST(evolver, load_unload_weights) {
     std::vector<vec_t> train_labels;
     std::vector<vec_t> train_data;
 
-    put_random_data(&train_labels, 1);
-    put_random_data(&train_data, 5);
+    put_random_data(&train_labels, 1, random);
+    put_random_data(&train_data, 5, random);
 
     Evolver<sequential, mse> evo(std::make_shared<network<sequential>>(nn),
                             std::make_shared<std::vector<vec_t>>(train_labels),
-                            std::make_shared<std::vector<vec_t>>(train_data));
+                            std::make_shared<std::vector<vec_t>>(train_data),
+                            random);
 
     size_t weight_count = evo.getWeightCount();
 
-    std::shared_ptr<Individual> indv_ptr(new Individual(weight_count));
+    std::shared_ptr<Individual> indv_ptr(new Individual(weight_count, random));
 
     evo.loadWeights(indv_ptr);
     auto network_weights = *(evo.getCurrentNetworkWeights());
@@ -92,9 +100,13 @@ TEST(evolver, load_unload_weights) {
     for (size_t i = 0; i < weight_count; i++) {
         EXPECT_EQ(genome[i], network_weights[i]);
     }
+
+    delete random;
 }
 
-TEST(evolver, reproduce_population) {
+TEST(EvoEvolverTest, reproduce_population) {
+    Random * random = new Random(42);
+
     network<sequential> nn;
     core::backend_t backend_type = core::default_engine();
     nn << fully_connected_layer(5, 2, true, backend_type)
@@ -104,12 +116,13 @@ TEST(evolver, reproduce_population) {
     std::vector<vec_t> train_labels;
     std::vector<vec_t> train_data;
 
-    put_random_data(&train_labels, 1);
-    put_random_data(&train_data, 5);
+    put_random_data(&train_labels, 1, random);
+    put_random_data(&train_data, 5, random);
 
     Evolver<sequential, mse> evo(std::make_shared<network<sequential>>(nn),
                             std::make_shared<std::vector<vec_t>>(train_labels),
-                            std::make_shared<std::vector<vec_t>>(train_data));
+                            std::make_shared<std::vector<vec_t>>(train_data),
+                            random);
 
     auto pre_repro = evo.getPopulation();
 
@@ -120,9 +133,12 @@ TEST(evolver, reproduce_population) {
     EXPECT_EQ(pre_repro->size(), post_repro->size());
 
     // Don't know how to test anything else...
+    delete random;
 }
 
-TEST(evolver, mini_batch_handler) {
+TEST(EvoEvolverTest, mini_batch_handler) {
+    Random * random = new Random(42);
+
     network<sequential> nn;
     core::backend_t backend_type = core::default_engine();
     nn << fully_connected_layer(5, 2, true, backend_type)
@@ -146,7 +162,8 @@ TEST(evolver, mini_batch_handler) {
 
     Evolver<sequential, mse> evo(std::make_shared<network<sequential>>(nn),
                             std::make_shared<std::vector<vec_t>>(train_labels),
-                            std::make_shared<std::vector<vec_t>>(train_data));
+                            std::make_shared<std::vector<vec_t>>(train_data),
+                            random);
 
     // The population is evaluated on evolver construction so we should expect
     // a rollover into the next epoch on the this batch.
@@ -163,6 +180,8 @@ TEST(evolver, mini_batch_handler) {
         EXPECT_EQ(train_labels[i - 1], mini_labels[i]);
         EXPECT_EQ(train_data[i - 1], mini_data[i]);
     }
+
+    delete random;
 }
 
 }

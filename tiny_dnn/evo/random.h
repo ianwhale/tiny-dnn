@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include<iostream>
 #include <memory>
 #include <random>
 
@@ -30,7 +31,16 @@ namespace tiny_dnn {
          * Set the seed for the random generator.
          * @param s integer seed value.
          */
-        inline void setSeed(const int s) { seed = s; }
+        inline void setSeed(const int s) {
+            seed = s;
+            init();
+        }
+
+        /**
+         * Get the current seed.
+         * @return the random seed.
+         */
+        inline int getSeed() { return seed; }
 
         /**
          * Generate a double between 0.0 and 1.0
@@ -123,47 +133,13 @@ namespace tiny_dnn {
         int32_t get() {
           if (++inext == 56) inext = 0;
           if (++inextp == 56) inextp = 0;
+
           int mj = ma[inext] - ma[inextp];
           if (mj < 0) mj += _RAND_MBIG;
+
           ma[inext] = mj;
 
           return mj;
         }
-    };
-
-    /**
-     * Singleton class to make sure we have only one random generator.
-     */
-    struct RandomDispatcher {
-
-        static RandomDispatcher *instance() {
-            static RandomDispatcher instance;
-            return &instance;
-        }
-
-        void initialize() {
-            mRandom = std::make_shared<Random>(mSeed);
-            mInitialized = true;
-        }
-        std::shared_ptr<Random> getRandom() {
-            assert(mInitialized);
-            return mRandom;
-        }
-        void setSeed(const int s) { mSeed = s; }
-
-        RandomDispatcher(RandomDispatcher const&) = delete;
-        RandomDispatcher(RandomDispatcher&&) = delete;
-        RandomDispatcher& operator=(RandomDispatcher const&) = delete;
-        RandomDispatcher& operator=(RandomDispatcher &&) = delete;
-
-    private:
-        std::shared_ptr<Random> mRandom = nullptr;
-        int mSeed;
-        bool mInitialized = false;
-
-        /**
-         * Need to set seed always after initialization.
-         */
-        RandomDispatcher() {}
     };
 }

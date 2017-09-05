@@ -77,8 +77,11 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
          */
         Evolver(std::shared_ptr<network<NetType>> nn,
                 std::shared_ptr<std::vector<vec_t>> train_labels,
-                std::shared_ptr<std::vector<vec_t>> train_data)
+                std::shared_ptr<std::vector<vec_t>> train_data,
+                Random * random)
                 : mNetwork(nn), mHandler(train_labels, train_data) {
+
+            mRandom = random;
 
             for (size_t i = 0; i < Params::population_size; i++) {
                 mPopulation.push_back(nullptr);
@@ -210,14 +213,14 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
                 top_individuals.push_back(mPopulation[i]);
             }
 
-            Roulette wheel(top_individuals);
+            Roulette wheel(top_individuals, mRandom);
 
             size_t index;
             for (size_t i = 0; i < Params::population_size; i++) {
                 index = wheel.spin();
 
                 // Should we do sexual reproduction?
-                if (uniform_rand(0.0, 1.0) < Params::sex_proportion) {
+                if (mRandom->getDouble() < Params::sex_proportion) {
                     newPopulation.push_back(mPopulation[index]->createOffspring(
                         mPopulation[wheel.spin()]));
                 }
@@ -278,6 +281,7 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
         float mRateDecayRate;
 
         MiniBatchHandler mHandler;
+        Random * mRandom;
     private:
         /**
          * Calculate how many weights are in the network.
@@ -298,9 +302,9 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
          * @param genome_length
          */
         void initializePopulation(size_t genome_length) {
-            for_i(true, Params::population_size, [&](size_t i) {
-                mPopulation[i] = std::make_shared<Individual>(genome_length);
-            });
+            for (size_t i = 0; i < mPopulation.size(); i++) {
+                mPopulation[i] = std::make_shared<Individual>(genome_length, mRandom);
+            }
 
             evaluatePopulation();
         }

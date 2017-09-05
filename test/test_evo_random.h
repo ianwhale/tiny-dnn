@@ -1,22 +1,22 @@
 #pragma once
 
+#include <iostream>
 #include "testhelper.h"
 #include "tiny_dnn/tiny_dnn.h"
 
 namespace tiny_dnn {
 
-TEST(random, dispatcher) {
-    auto dispatcher = RandomDispatcher::instance();
-    dispatcher->setSeed(42);
-    dispatcher->initialize();
+TEST(EvoRandomTest, get_double) {
+    Random * random = new Random(42);
 
-    auto gen = dispatcher->getRandom();
+    float r;
+    for (size_t i = 0; i < 100; i++) {
+        r = random->getDouble();
 
-    float random;
-    for (size_t i = 0; i < 10000; i++) {
-        random = gen->getDouble();
-        EXPECT_TRUE(0.0f <= random && random < 1.0f);
+        EXPECT_TRUE(0.0f <= r && r < 1.0f);
     }
+
+    delete random;
 }
 
 }

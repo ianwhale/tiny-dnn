@@ -6,6 +6,7 @@
 #include "tiny_dnn/evo/params.h"
 #include "tiny_dnn/util/random.h"
 #include "tiny_dnn/evo/evolver.h"
+#include "tiny_dnn/evo/random.h"
 
 namespace tiny_dnn {
 
@@ -17,16 +18,16 @@ typedef std::shared_ptr<std::vector<float_t>> vec_ptr;
          * Generate an initial random genome based on the specified size.
          * @param size
          */
-        Individual(size_t size) : mSize(size) {
+        Individual(size_t size, Random * random) : mSize(size) {
+            mRandom = random;
+
             for (size_t i = 0; i < size; i++) {
                 // Randomly initialize genome.
-                auto gen = random_generator::get_instance()();
-                std::uniform_real_distribution<float> dst(
+                mGenome.push_back(random->getDouble(
                     -1 * Params::initial_weights_delta,
                     Params::initial_weights_delta
-                );
+                ));
 
-                mGenome.push_back(dst(gen));
                 mFitness = std::numeric_limits<float>::min();
             }
         }
@@ -42,9 +43,15 @@ typedef std::shared_ptr<std::vector<float_t>> vec_ptr;
 
             mGenome.resize(mSize);
 
-            for_i(true, mSize, [&](size_t i) {
+            for (size_t i = 0; i < mSize; i++) {
                 mGenome[i] = (*genome_ptr)[i];
-            });
+            }
+
+            // for_i(true, mSize, [&](size_t i) {
+            //     mGenome[i] = (*genome_ptr)[i];
+            // });
+
+            mRandom = other.getRandom();
         }
 
         /**
@@ -54,23 +61,21 @@ typedef std::shared_ptr<std::vector<float_t>> vec_ptr;
         std::shared_ptr<Individual> createOffspring(float mutation_power,
                                                     float mutation_rate) {
             auto child = std::make_shared<Individual>(*this);
-
             auto child_genome = child->getGenome();
 
-            auto coin_flip = random_generator::get_instance()();
-            std::uniform_real_distribution<float> coin_dst(0, 1);
-
-            auto gen = random_generator::get_instance()();
-            std::uniform_real_distribution<float> dst(
-                -1 * mutation_power,
-                mutation_power
-            );
-
-            for_i(true, child_genome->size(), [&](size_t i) {
-                if (coin_dst(coin_flip) < mutation_rate) {
-                    (*child_genome)[i] += dst(gen);
+            for (size_t i = 0; i < child_genome->size(); i++) {
+                if (mRandom->getDouble() < mutation_rate) {
+                    (*child_genome)[i] +=
+                        mRandom->getDouble(-1 * mutation_power, mutation_power);
                 }
-            });
+            }
+
+            // for_i(true, child_genome->size(), [&](size_t i) {
+            //     if (mRandom->getDouble() < mutation_rate) {
+            //         (*child_genome)[i] +=
+            //             mRandom->getDouble(-1 * mutation_power, mutation_power);
+            //     }
+            // });
 
             child->setFitness(mFitness);
 
@@ -88,14 +93,17 @@ typedef std::shared_ptr<std::vector<float_t>> vec_ptr;
             auto child_genome = child->getGenome();
             auto parent_genome = parent->getGenome();
 
-            auto coin_flip = random_generator::get_instance()();
-            std::uniform_real_distribution<float> coin_dst(0, 1);
-
-            for_i(true, child_genome->size(), [&](size_t i) {
-                if (coin_dst(coin_flip) < 0.5) {
+            for (size_t i = 0; i < child_genome->size(); i++) {
+                if (mRandom->getDouble() < 0.5) {
                     (*child_genome)[i] = (*parent_genome)[i];
                 }
-            });
+            }
+
+            // for_i(true, child_genome->size(), [&](size_t i) {
+            //     if (mRandom->getDouble() < 0.5) {
+            //         (*child_genome)[i] = (*parent_genome)[i];
+            //     }
+            // });
 
             child->setFitness((mFitness + parent->getFitness()) / 2);
 
@@ -120,9 +128,11 @@ typedef std::shared_ptr<std::vector<float_t>> vec_ptr;
 
         void setFitness(float_t fitness) { mFitness = fitness; }
         float getFitness() { return mFitness; }
+        Random * getRandom() const { return mRandom; }
     private:
-        float mFitness;
         size_t mSize;
+        Random * mRandom;
+        float mFitness;
         std::vector<float_t> mGenome;
     };
 }

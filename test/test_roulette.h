@@ -7,12 +7,14 @@
 
 namespace tiny_dnn {
 
-TEST(roulette, spin) {
+TEST(EvoRoulette, spin) {
+    Random * random = new Random(42);
+
     std::vector<float_t> mock_fitnesses = {30.143, 60.556, 90.334};
 
     std::vector<std::shared_ptr<Individual>> mock_individuals;
     for (float_t fitness : mock_fitnesses) {
-        auto indv = std::make_shared<Individual>(42);
+        auto indv = std::make_shared<Individual>(42, random);
         indv->setFitness(fitness);
 
         mock_individuals.push_back(indv);
@@ -24,7 +26,7 @@ TEST(roulette, spin) {
         counts[mock_fitnesses[i]] = 0;
     }
 
-    Roulette wheel(mock_individuals);
+    Roulette wheel(mock_individuals, random);
 
     size_t pos;
     for (size_t i = 0; i < 10000; i++) {
@@ -38,6 +40,8 @@ TEST(roulette, spin) {
     }
     std::cout << "Count at " << mock_fitnesses[mock_fitnesses.size() - 1] << ": "
             << counts[mock_fitnesses[mock_fitnesses.size() - 1]] << std::endl;
+
+    delete random;
 }
 
 }

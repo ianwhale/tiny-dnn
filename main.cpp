@@ -16,7 +16,7 @@ static void construct_simple_net(network<sequential> &nn,
 }
 
 static void leea_experiment(const std::string &data_path, const int seed) {
-    RandomDispatcher::setSeed(seed);
+    Random * random = new Random(seed);
 
     network<sequential> nn;
     core::backend_t backend_type = core::default_engine();
@@ -40,9 +40,11 @@ static void leea_experiment(const std::string &data_path, const int seed) {
 
     Evolver<sequential, mse> evo(std::make_shared<network<sequential> >(nn),
                             std::make_shared<std::vector<vec_t> >(one_hot_labels),
-                            std::make_shared<std::vector<vec_t> >(train_images));
+                            std::make_shared<std::vector<vec_t> >(train_images),
+                            random);
 
     evo.evolve();
+    delete random;
 }
 
 static void usage(const char *argv0) {

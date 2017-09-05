@@ -6,7 +6,6 @@
 #include <limits>
 #include <assert.h>
 #include "tiny_dnn/evo/individual.h"
-#include "tiny_dnn/util/random.h"
 
 namespace tiny_dnn {
 
@@ -23,7 +22,9 @@ public:
      * scheme. .
      * @param individuals
      */
-    Roulette(const std::vector<std::shared_ptr<Individual>> & individuals) {
+    Roulette(const std::vector<std::shared_ptr<Individual>> & individuals,
+             Random * random) {
+        mRandom = random;
         mSize = individuals.size();
 
         float_t min = std::numeric_limits<float_t>::max();
@@ -44,8 +45,6 @@ public:
             mTotal += fitness;
             mAdjustedFits.push_back(fitness);
         }
-
-        mDistribution = std::uniform_real_distribution<float>(0, mTotal);
     }
 
     /**
@@ -53,7 +52,7 @@ public:
      * @return size_t i, the index chosen from the fitness distribution.
      */
     size_t spin() {
-        float_t r_val = mDistribution(random_generator::get_instance()());
+        float_t r_val = mRandom->getDouble(0, mTotal);
 
         for (size_t i = 0; i < mSize; i++) {
             r_val -= mAdjustedFits[i];
@@ -68,7 +67,7 @@ public:
     }
 
 private:
-    std::uniform_real_distribution<float> mDistribution;
+    Random * mRandom;
     float_t mTotal = 0.0;
     size_t mSize = 0;
     std::vector<float_t> mAdjustedFits = {}; //< Adjusted fitnesses.
