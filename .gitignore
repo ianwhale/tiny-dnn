@@ -213,3 +213,5 @@ googletest*
 test/print_device
 test/tiny_dnn_test
 DartConfiguration.tcl
+compile_main*
+perf*
