@@ -43,13 +43,9 @@ typedef std::shared_ptr<std::vector<float_t>> vec_ptr;
 
             mGenome.resize(mSize);
 
-            for (size_t i = 0; i < mSize; i++) {
+            for_i(true, mSize, [&](size_t i) {
                 mGenome[i] = (*genome_ptr)[i];
-            }
-
-            // for_i(true, mSize, [&](size_t i) {
-            //     mGenome[i] = (*genome_ptr)[i];
-            // });
+            });
 
             mRandom = other.getRandom();
         }
@@ -126,7 +122,7 @@ typedef std::shared_ptr<std::vector<float_t>> vec_ptr;
 
         size_t getSize() const { return mSize; }
 
-        void setFitness(float_t fitness) { mFitness = fitness; }
+        void setFitness(float fitness) { mFitness = fitness; }
         float getFitness() { return mFitness; }
         Random * getRandom() const { return mRandom; }
     private:

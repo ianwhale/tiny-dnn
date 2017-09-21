@@ -24,5 +24,6 @@ namespace tiny_dnn {
       static constexpr float initial_weights_delta = 1.0; //< Initial weights between [-Wd, Wd]
       static constexpr float fitness_decay_rate = 0.2; //< 0.2 = 20% decay per evaluation.
       static const size_t tracking_stride = 1000; // Every N generations, print out info.
+      static constexpr float min_fitness = 0.00001;
     };
 }

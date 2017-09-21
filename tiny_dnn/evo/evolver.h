@@ -1,11 +1,14 @@
 #pragma once
 
+#include <array>
 #include <memory>
 #include <vector>
 #include <algorithm>
 #include <iostream>
 #include <cmath>
 #include <utility>
+#include <thread>
+#include <limits>
 #include "tiny_dnn/evo/params.h"
 #include "tiny_dnn/evo/individual.h"
 #include "tiny_dnn/evo/roulette.h"
@@ -13,12 +16,12 @@
 
 namespace tiny_dnn {
 
-typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
+typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> population_t;
 
     /**
      * Evolver class. Aims to minimize the weights of the network using LEEA.
      */
-    template <typename NetType, typename Error>
+    template <typename Error, size_t N>
     class Evolver {
     public:
 
@@ -69,22 +72,22 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
 
         /**
          * Evolver constructor.
-         * @param nn, network being evolved.
+         * @param networks, multiple of the same network for parallelization.
          * @param train_labels, one-hot encodings.
          * @param train_data, some data!
          * @param initialize, should we initalize the population?
          *                    If no, be sure to on your own!
          */
-        Evolver(std::shared_ptr<network<NetType>> nn,
+        Evolver(std::array<std::shared_ptr<network<sequential>>, N> * networks,
                 std::shared_ptr<std::vector<vec_t>> train_labels,
                 std::shared_ptr<std::vector<vec_t>> train_data,
                 Random * random)
-                : mNetwork(nn), mHandler(train_labels, train_data) {
-
+                : mNetworks(networks), mHandler(train_labels, train_data) {
             mRandom = random;
 
             for (size_t i = 0; i < Params::population_size; i++) {
                 mPopulation.push_back(nullptr);
+                mGenerationErrors.push_back(0.0);
             }
 
             mMutationPower = Params::mutation_power;
@@ -103,9 +106,9 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
          * Get a pointer to the current network weights.
          * @return shared_ptr
          */
-        std::shared_ptr<std::vector<float>> getCurrentNetworkWeights() {
+        std::shared_ptr<std::vector<float>> getCurrentNetworkWeights(size_t idx) {
             auto network_weights = std::make_shared<std::vector<float>>();
-            for (auto & layer : *mNetwork) {
+            for (auto & layer : *((*mNetworks)[idx])) {
                 for (auto & weights : layer->weights()) {
                     for (float weight : *weights) {
                         network_weights->push_back(weight);
@@ -120,9 +123,9 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
          * Loads a network's weights with an individual's genome.
          * @param individual
          */
-        void loadWeights(std::shared_ptr<Individual> individual) {
+        void loadWeights(std::shared_ptr<Individual> individual, size_t id) {
             int idx = 0;
-            for (auto & layer : *mNetwork) {
+            for (auto & layer : *((*mNetworks)[id])) {
                 layer->load(*(individual->getGenome()), idx);
             }
         }
@@ -149,14 +152,36 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
          * Print out some info for the current state of the run.
          */
         void printInfo() {
-            std::cout << "Best of generation "
+            std::cout << "Best fitness of generation "
                     << mCurrentGeneration
                     << ": " << mPopulation[0]->getFitness()
                     << std::endl;
 
-            std::cout << "Average of generation "
+            std::cout << "Average fitness of generation "
                     << mCurrentGeneration
                     << ": " << getAverageFitness()
+                    << std::endl;
+
+            float_t lowest_error = std::numeric_limits<float_t>::max();
+            float_t average_error = 0;
+
+            for (float_t error : mGenerationErrors) {
+                if (error < lowest_error) {
+                    lowest_error = error;
+                }
+                average_error += error;
+            }
+
+            average_error /= mGenerationErrors.size();
+
+            std::cout << "Lowest error of generation "
+                    << mCurrentGeneration
+                    << ": " << lowest_error
+                    << std::endl;
+
+            std::cout << "Average error of generation "
+                    << mCurrentGeneration
+                    << ": " << average_error
                     << std::endl;
 
             std::cout << "- - - - - - - - - - - - - - - - - - - - - - - - -"
@@ -168,22 +193,78 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
          * getting the value of the loss function for a minibatch.
          */
         void evaluatePopulation() {
-            // TODO: Parallelize! (Worth noting that I'm guessing that
-            // the network evaluation routine is not threadsafe...)
             std::vector<vec_t> mini_data;
             std::vector<vec_t> mini_labels;
 
             mHandler.nextBatch(&mini_labels, &mini_data);
 
-            // Idea to parallelize:
-            // Maintain a list of networks (4) and evaluate the first
-            // 25% or 12.5% of the population on the first network, etc etc.
-            float_t fitness;
-            for (auto individual : mPopulation) {
-                loadWeights(individual);
-                fitness = mNetwork->template get_loss<Error>(mini_data, mini_labels);
-                individual->setFitness(individual->getFitness() * (1.0 - Params::fitness_decay_rate)
-                            + fitness);
+            // Inspired by code from tiny_dnn/util/parallel_for.h
+            size_t range_size = mPopulation.size() / N;
+
+            if (range_size * N < (mPopulation.size())) {
+                range_size++;
+            }
+
+            size_t begin = 0;
+            size_t end = begin + range_size;
+            std::vector<std::thread> threads;
+
+            for (size_t i = 0; i < N; i++) {
+                threads.push_back(
+                    std::move(
+                        std::thread(
+                            [this, begin, end, i, mini_data, mini_labels] {
+                                this->evaluateRange(
+                                    begin, end, i, mini_data, mini_labels
+                                );
+                            }
+                        )
+                    )
+                );
+
+                begin += range_size;
+                end = begin + range_size;
+                if (begin >= mPopulation.size()) {
+                    break;
+                }
+
+                if (end > mPopulation.size()) {
+                    end = mPopulation.size();
+                }
+            }
+
+            for (auto &thread_ : threads) {
+                thread_.join();
+            }
+        }
+
+        /**
+         * Evaluates a range of the population using a particula
+         * @param start starting index of evaluation.
+         * @param end   ending index of evaluation.
+         * @param id    which network to evaluate with.
+         * @param mini_data copy of data to use.
+         * @param mini_labels copy of labels to use.
+         */
+        void evaluateRange(size_t start, size_t end, size_t id,
+            std::vector<vec_t> mini_data, std::vector<vec_t> mini_labels) {
+
+            float fitness = mini_data.size();
+            float previous_fitness;
+            float_t error;
+            for (size_t i = start; i < end; i++) {
+                previous_fitness = mPopulation[i]->getFitness();
+                previous_fitness *= 1 - Params::fitness_decay_rate;
+
+                loadWeights(mPopulation[i], id);
+                error = (*mNetworks)[id]->template get_loss<Error>(mini_data, mini_labels);
+                fitness -= error;
+                mGenerationErrors[i] = error;
+
+                fitness = (fitness < Params::min_fitness) ? Params::min_fitness
+                                                          : fitness;
+
+                mPopulation[i]->setFitness(fitness + previous_fitness);
             }
         }
 
@@ -249,7 +330,7 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
          * Mostly for testing or gathering stats.
          * @return shared pointer to the population.
          */
-        pop_ptr getPopulation() {
+        population_t getPopulation() {
             return std::make_shared<std::vector<std::shared_ptr<Individual>>>
                     (mPopulation);
         }
@@ -270,7 +351,10 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
     protected:
         int mCurrentGeneration = 0;
         std::vector<std::shared_ptr<Individual>> mPopulation;
-        std::shared_ptr<network<NetType>> mNetwork;
+        std::vector<float_t> mGenerationErrors;
+
+
+        std::array<std::shared_ptr<network<sequential>>, N> * mNetworks;
 
         size_t mWeightCount;
 
@@ -289,7 +373,7 @@ typedef std::shared_ptr<std::vector<std::shared_ptr<Individual>>> pop_ptr;
          */
         size_t calculateWeightCount() {
             size_t count = 0;
-            for (auto layer : *mNetwork) {
+            for (auto layer : *((*mNetworks)[0])) {
                 for (auto & weights : layer->weights()) {
                     count += weights->size();
                 }

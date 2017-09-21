@@ -14,7 +14,7 @@ TEST(EvoRoulette, spin) {
 
     std::vector<std::shared_ptr<Individual>> mock_individuals;
     for (float_t fitness : mock_fitnesses) {
-        auto indv = std::make_shared<Individual>(42, random);
+        auto indv = std::make_shared<Individual>(1, random);
         indv->setFitness(fitness);
 
         mock_individuals.push_back(indv);
@@ -36,7 +36,7 @@ TEST(EvoRoulette, spin) {
 
     for (size_t i = 0; i < mock_fitnesses.size() - 1; i++) {
         std::cout << "Count at " << mock_fitnesses[i] << ": " << counts[mock_fitnesses[i]] << std::endl;
-        EXPECT_TRUE(counts[mock_fitnesses[i]] > counts[mock_fitnesses[i + 1]]);
+        EXPECT_TRUE(counts[mock_fitnesses[i]] < counts[mock_fitnesses[i + 1]]);
     }
     std::cout << "Count at " << mock_fitnesses[mock_fitnesses.size() - 1] << ": "
             << counts[mock_fitnesses[mock_fitnesses.size() - 1]] << std::endl;
